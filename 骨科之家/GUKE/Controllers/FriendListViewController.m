@@ -1,0 +1,948 @@
+//
+//  CochatViewController.m
+//  leliao
+//
+//  Created by qidi on 14-6-24.
+//  Copyright (c) 2014年 qidi. All rights reserved.
+//
+
+#import "FriendListViewController.h"
+#import "pinyin.h"
+#import "ChineseString.h"
+#import "Interface.h"
+#import "FriendIfo.h"
+#import "FriendsTableViewCell.h"
+#import "FriendsTableViewCellOne.h"
+#import "FriendDetailViewController.h"
+#import "UIImageView+WebCache.h"
+#import "TSPopoverController.h"
+#import "TSActionSheet.h"
+#import "SearchFriendsViewController.h"
+#import "SetUpViewController.h"
+#import "UserContactViewController.h"
+#import "QiDiPopoverView.h"
+#import "GroupListViewController.h"
+
+#import "AddGroupMemberViewController.h"
+#import "FirendCircleHomeTableViewController.h"
+#import "AddNewColleagueViewController.h"
+#import "SqliteFieldAndTable.h"
+
+#import "UserLoginViewController.h"
+static CGPoint offset;
+
+@interface FriendListViewController ()
+{
+    MBProgressHUD *HUD;
+    QiDiPopoverView *popOver;
+    UIView *head_bg;
+    UITableView *_tableView;
+    NSMutableArray *frindsArray;
+    NSMutableArray *userArray;
+    UITextField *groupName;
+    NSString *_friendNewCount;
+}
+
+
+// 获取"未审核好友的数量"
+- (void)requestFriendNewCount;
+
+@end
+
+@implementation FriendListViewController
+// dealloc
+-(void)dealloc{
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:PUSH_NEW object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:IS_DATACHANG object:nil];
+    self.view = nil;
+    self.sortedArrForArrays = nil;
+    self.sectionHeadsKeys = nil;
+    HUD = nil;
+    popOver = nil;
+    head_bg =  nil;
+    _tableView = nil;
+    frindsArray = nil;
+    userArray = nil;
+    groupName = nil;
+    _friendNewCount = nil;
+}
+- (void)viewWillDisappear:(BOOL)animated{
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:PUSH_NEW object:nil];
+}
+- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        frindsArray = [[NSMutableArray alloc]init];
+        userArray = [[NSMutableArray alloc]init];
+        _sortedArrForArrays = [[NSMutableArray alloc]init];
+        _sectionHeadsKeys = [[NSMutableArray alloc] init];
+        _friendNewCount = [NSString stringWithFormat:@"%d",0];
+    }
+    return self;
+}
+- (void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:YES];
+    [self getFriendList];
+    [self requestFriendNewCount];
+}
+// 红点的标记
+- (void)addRedLable{
+    UIView *oldRedLable =(UIView *)[head_bg viewWithTag:615];
+    [oldRedLable removeFromSuperview];
+    UIView *redLabel = [[UIView alloc]initWithFrame:CGRectZero];
+    redLabel.backgroundColor = [UIColor redColor];
+    redLabel.tag = 615;
+    [head_bg addSubview:redLabel];
+    redLabel = nil;
+    if ([[[NSUserDefaults standardUserDefaults] objectForKey:@"isShowRed"] boolValue]) {
+        UIView *redLable = (UIView *)[head_bg viewWithTag:615];
+        if (redLable.frame.size.width == 0) {
+            redLable.frame = CGRectMake(285, 5, 12, 12);
+            redLable.layer.cornerRadius = 6;
+        }
+    }
+}
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor whiteColor];
+    
+    [self navigation];
+    [self creatHead];
+    // 添加小红点
+    [self addRedLable];
+    [self creatTable];
+    // 监听网络数据是否发生了变化
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(dataChange:) name:IS_DATACHANG object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pushNew:) name:PUSH_NEW object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(isShowRed:) name:@"redLabel" object:nil];
+    
+}
+// 是否显示小红点
+- (void)isShowRed:(NSNotification *)noti{
+    if (![[[NSUserDefaults standardUserDefaults] objectForKey:@"isShowRed"] boolValue]) {
+        [[NSUserDefaults standardUserDefaults] setObject:[NSNumber numberWithBool:YES] forKey:@"isShowRed"];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+    }
+}
+// 有新的推送消息，则显示红点
+- (void)pushNew:(NSNotification *)noti{
+    // 上侧显示红点
+    UIView *redLable = (UIView *)[head_bg viewWithTag:615];
+    if (redLable.frame.size.width == 0) {
+        redLable.frame = CGRectMake(285, 5, 12, 12);
+        redLable.layer.cornerRadius = 6;
+    }
+}
+// 执行方法，重新加载数据
+- (void)dataChange:(NSNotification *)noti{
+    [self getFriendList];
+}
+- (void)navigation
+{
+    UIView *leftView = [[UIView alloc]initWithFrame:CGRectMake(0, 0, 100, 44)];
+    leftView.backgroundColor = [UIColor clearColor];
+    
+    UIImageView *logoView = [[UIImageView alloc]initWithImage:[[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"unis_logo@2x" ofType:@"png"]]];
+    
+    logoView.frame = CGRectMake(0, 5, 71/2, 71/2);
+    logoView.contentMode = UIViewContentModeScaleAspectFit;
+    
+    UILabel *loginLabel = [[UILabel alloc]initWithFrame:CGRectMake(40, 7, 160, 30)];
+    loginLabel.text = LOCALIZATION(@"home_chat");
+    loginLabel.textColor = [UIColor whiteColor];
+    loginLabel.backgroundColor = [UIColor clearColor];
+    loginLabel.font = [UIFont systemFontOfSize:16.0f];
+    [leftView addSubview:logoView];
+    [leftView addSubview:loginLabel];
+    
+    UIBarButtonItem *leftItem = [[UIBarButtonItem alloc]initWithCustomView:leftView];
+    self.navigationItem.leftBarButtonItem = leftItem;
+    
+    UIView *rightView = [[UIView alloc]initWithFrame:CGRectMake(0, 0, 88+44, 44)];
+    rightView.backgroundColor = [UIColor clearColor];
+    
+    UIButton * rightBtn1 = [UIButton buttonWithType:UIButtonTypeCustom];
+    rightBtn1.frame = CGRectMake(0, 0, 44, 44);
+    rightBtn1.backgroundColor = [UIColor clearColor];
+    [rightBtn1 setImage:[[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"search_ico@2x" ofType:@"png"]] forState:UIControlStateNormal];
+    
+    
+    [rightBtn1 setImageEdgeInsets:UIEdgeInsetsMake(9.5, 16, 9.5, 3)];
+    rightBtn1.tag =SEARCH_BTN_TAG;
+
+    [rightBtn1 addTarget:self action:@selector(btnClick:) forControlEvents:UIControlEventTouchUpInside];
+    [rightBtn1 setShowsTouchWhenHighlighted:YES];
+    
+    UIButton * rightBtn2 = [UIButton buttonWithType:UIButtonTypeCustom];
+    rightBtn2.frame = CGRectMake(44, 0, 44, 44);
+    rightBtn2.tag =ADD_BTN_TAG;
+    [rightBtn2 setImage:[[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"addfri_ico@2x" ofType:@"png"]] forState:UIControlStateNormal];
+    
+    [rightBtn2 setImageEdgeInsets:UIEdgeInsetsMake(9.5, 16, 9.5, 3)];
+    [rightBtn2 addTarget:self action:@selector(showActionSheet:forEvent:) forControlEvents:UIControlEventTouchUpInside];
+    [rightBtn2 setShowsTouchWhenHighlighted:YES];
+    
+    UIButton * rightBtn3 = [UIButton buttonWithType:UIButtonTypeCustom];
+    rightBtn3.frame = CGRectMake(88, 0, 44, 44);
+    rightBtn3.tag =SET_BTN_TAG;
+    [rightBtn3 setImage:[[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"set_ico@2x" ofType:@"png"]] forState:UIControlStateNormal];
+    
+    [rightBtn3 setImageEdgeInsets:UIEdgeInsetsMake(9.5, 16, 9.5, 3)];
+    [rightBtn3 addTarget:self action:@selector(btnClick:) forControlEvents:UIControlEventTouchUpInside];
+    [rightBtn3 setShowsTouchWhenHighlighted:YES];
+    
+    [rightView addSubview:rightBtn1];
+    [rightView addSubview:rightBtn2];
+    [rightView addSubview:rightBtn3];
+    UIBarButtonItem* rightitem = [[UIBarButtonItem alloc]initWithCustomView:rightView];
+    self.navigationItem.rightBarButtonItem = rightitem;
+   
+}
+- (void)tapAction1
+{
+    SearchFriendsViewController *search = [[SearchFriendsViewController alloc]init];
+    CATransition *animation = [CATransition animation];
+    [animation setDuration:0.3];
+    [animation setType: kCATransitionMoveIn];
+    [animation setSubtype: kCATransitionFromTop];
+    [animation setTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionDefault]];
+    [self.navigationController pushViewController:search animated:NO];
+    [self.navigationController.view.layer addAnimation:animation forKey:nil];
+}
+- (void)creatHead
+{
+
+    head_bg = [[UIView alloc]initWithFrame:CGRectMake(0, 0, SCREEN_WIDTH, 40)];
+    [head_bg setBackgroundColor:GETColor(245, 245, 245)];
+    
+    
+    UIImageView *imgView = [[UIImageView alloc]initWithImage:[[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"navline_ico@2x" ofType:@"png"]]];
+    
+    CGFloat buttonWidth = SCREEN_WIDTH/3;
+    
+    imgView.frame = CGRectMake(0, 34, buttonWidth, 6);
+    
+    // 通讯录
+    NSString *ContactsText = LOCALIZATION(@"home_friend");
+    UIButton *Contacts = [UIButton buttonWithType:UIButtonTypeCustom];
+    Contacts.tag = CONTACT_BTN_TAG;
+    Contacts.userInteractionEnabled = NO;
+    Contacts.backgroundColor = [UIColor clearColor];
+    //Contacts.frame = CGRectMake(0, 5, 80, 30);
+    Contacts.frame = CGRectMake(0, 0, buttonWidth, 40);
+    [Contacts setTitle:ContactsText forState:UIControlStateNormal];
+    [Contacts setTitleColor:GETColor(144, 84, 158) forState:UIControlStateNormal];
+    //[Contacts addTarget:self action:@selector(btnClick:) forControlEvents:UIControlEventTouchUpInside];
+    Contacts.titleLabel.textAlignment = NSTextAlignmentCenter;
+    Contacts.titleLabel.font = [UIFont systemFontOfSize:16];
+    [Contacts setShowsTouchWhenHighlighted:YES];
+    UITapGestureRecognizer * ContactsGesture = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(gestureClick:)];
+    ContactsGesture.view.tag = CONTACT_BTN_TAG;
+    [Contacts addGestureRecognizer:ContactsGesture];
+    // 朋友圈
+    NSString *MomentsText = LOCALIZATION(@"home_group");
+    UIButton *Moments = [UIButton buttonWithType:UIButtonTypeCustom];
+    Moments.tag = MOMENTS_BTN_TAG;
+    Moments.backgroundColor = [UIColor clearColor];
+    Moments.frame = CGRectMake(buttonWidth, 0, buttonWidth, 40);
+    [Moments setTitle:MomentsText forState:UIControlStateNormal];
+    [Moments setTitleColor:[UIColor blackColor]  forState:UIControlStateNormal];
+    Moments.titleLabel.textAlignment = NSTextAlignmentCenter;
+    Moments.titleLabel.font = [UIFont systemFontOfSize:16];
+    [Moments setShowsTouchWhenHighlighted:YES];
+    UITapGestureRecognizer * MomentsGesture = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(gestureClick:)];
+    MomentsGesture.view.tag = MOMENTS_BTN_TAG;
+    [Moments addGestureRecognizer:MomentsGesture];
+    // 聊天
+    UIButton *Cochat = [UIButton buttonWithType:UIButtonTypeCustom];
+    Cochat.tag = COCHAT_BTN_TAG;
+    Cochat.backgroundColor = [UIColor clearColor];
+    Cochat.userInteractionEnabled = YES;
+    Cochat.frame = CGRectMake(buttonWidth*2, 0, buttonWidth, 40);
+    NSString *CochatText = LOCALIZATION(@"home_chat");
+    [Cochat setTitle:CochatText forState:UIControlStateNormal];
+    [Cochat setTitleColor:[UIColor blackColor]  forState:UIControlStateNormal];
+    Cochat.titleLabel.textAlignment = NSTextAlignmentCenter;
+    Cochat.titleLabel.font = [UIFont systemFontOfSize:16];
+    [Cochat setShowsTouchWhenHighlighted:YES];
+    UITapGestureRecognizer * CochatGesture = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(gestureClick:)];
+    CochatGesture.view.tag = COCHAT_BTN_TAG;
+    [Cochat addGestureRecognizer:CochatGesture];
+    
+    [head_bg addSubview:Cochat];
+    [head_bg addSubview:Moments];
+    [head_bg addSubview:Contacts];
+    [head_bg addSubview:imgView];
+    Cochat = nil;
+    Moments = nil;
+    Contacts = nil;
+    //metter = nil;
+    [self.view addSubview:head_bg];
+}
+- (void)creatTable
+{
+    NSString *alertText = LOCALIZATION(@"chat_loading");
+    [self creatHUD:alertText];
+    [HUD show:YES];
+    CGFloat height = head_bg.frame.size.height + head_bg.frame.origin.y;
+    _tableView = [[UITableView alloc]initWithFrame:CGRectMake(0, height, SCREEN_WIDTH, viewSize.height-height) style:UITableViewStylePlain];
+    _tableView.delegate = self;
+    _tableView.dataSource = self;
+    if (IOS7_LATER) {
+        [_tableView setSeparatorInset:UIEdgeInsetsMake(0,10,0,10)];
+    }
+    _tableView.sectionIndexColor = [UIColor blackColor];
+
+    [self setExtraCellLineHidden:_tableView];
+    [self SetTablePosition];
+    UIView *linebg = [[UIView alloc]initWithFrame:CGRectMake(0, 0, SCREEN_WIDTH, 0)];
+    [self.view addSubview:linebg];
+    [self.view addSubview:_tableView];
+    linebg = nil;
+}
+// 滚动的代理方法
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView;
+{
+    CGFloat offset_Y = _tableView.contentOffset.y;
+    [[NSUserDefaults standardUserDefaults] setObject:[NSNumber numberWithFloat:offset_Y] forKey:@"offset_Y"];
+    [[NSUserDefaults standardUserDefaults]synchronize];
+}
+- (void)SetTablePosition{
+    CGPoint OffSet;
+    OffSet.y = [[[NSUserDefaults standardUserDefaults] objectForKey:@"offset_Y"] floatValue];
+    OffSet.x = _tableView.contentOffset.x;
+    _tableView.contentOffset = OffSet;
+   
+}
+//获取公开信及群组最新信息列表
+- (void)getNewArticleList:(FriendIfo *)friendModel
+{
+    NSDictionary *parameters = @{@"userId":GET_USER_ID,@"sid":GET_S_ID,@"typeId":[NSString stringWithFormat:@"%d",INT_MAX],@"isGroupArticle":[NSString stringWithFormat:@"%d",1],@"recvId":[NSString stringWithFormat:@"%d",1],@"articleId":[NSString stringWithFormat:@"%d",1],@"sort":[NSString stringWithFormat:@"%d",1],@"order":[NSString stringWithFormat:@"%d",1],@"recordCount":[NSString stringWithFormat:@"%d",1]};
+    [AFRequestService responseData:FRIEND_LIST_URL andparameters:parameters andResponseData:^(id responseData){
+        NSDictionary *dict =(NSDictionary *)responseData;
+        
+        if ([self bindData:dict]) {
+            [_tableView reloadData];
+            [self SetTablePosition];
+            
+        }
+    }];
+}
+
+//获取用户群组及联系人列表
+- (void)getFriendList
+{
+    [frindsArray removeAllObjects];
+    [userArray removeAllObjects];
+    [_sortedArrForArrays removeAllObjects];
+    [_sectionHeadsKeys removeAllObjects];
+    NSDictionary *parameters = @{@"userId":GET_USER_ID,@"sid":GET_S_ID,@"pageSize":[NSString stringWithFormat:@"%d",INT_MAX],@"page":[NSString stringWithFormat:@"%d",1]};
+    [AFRequestService responseData:FRIEND_LIST_URL andparameters:parameters andResponseData:^(id responseData){
+        NSDictionary *dict =(NSDictionary *)responseData;
+        
+        if ([self bindData:dict]) {
+            [_tableView reloadData];
+            [self tableHeight];
+        }
+       
+    } andCathtype:[GET_USER_ID integerValue] andID:FREIENDLIST_CATCH_ID andtypeName:nil];// 好友列表的唯一标识
+}
+- (BOOL)bindData:(NSDictionary *)dict
+{
+    NSUInteger codeNum = [[dict objectForKey:@"code"] integerValue];
+    if (codeNum == CODE_SUCCESS) {
+        NSArray *contactlists = [dict objectForKey:@"friendlist"];
+        for (int i = 0; i <[contactlists count]; ++i) {
+            NSDictionary *contactlist = (NSDictionary *)contactlists[i];
+            FriendIfo *model = [[FriendIfo alloc]init];
+            model.createDate = [contactlist objectForKey:@"createDate"];
+            model.dstUserId = [contactlist valueForKey:@"dstUserId"];
+            model.dstUser = [contactlist valueForKey:@"dstUser"];
+            model.dstUserName = [contactlist objectForKey:@"dstUserName"];
+            model.friendId = [contactlist objectForKey:@"friendId"];
+            model.status = [contactlist objectForKey:@"status"];
+            model.userId = [contactlist objectForKey:@"userId"];
+            model.icon = [UserInfoDB selectFeildString:@"icon" andcuId:GET_U_ID anduserId:model.dstUserId];
+            [frindsArray addObject:model];
+            
+        }
+        
+//       [_tableView reloadData];
+        //[self tableHeight];
+         [HUD hide:YES];
+        self.sortedArrForArrays = [self getChineseStringArr:frindsArray];
+    }
+    else if (codeNum == CODE_ERROE){
+        SqliteFieldAndTable *sqliteAndtable = [[SqliteFieldAndTable alloc]init];
+        FriendListViewController __weak *_Self = self;
+        [sqliteAndtable repeatLogin:^(BOOL flag) {
+            if (flag) {
+                [_Self getFriendList];
+                [_Self requestFriendNewCount];
+            }
+            else{
+                UserLoginViewController *login = [[UserLoginViewController alloc]init];
+                [_Self.navigationController pushViewController:login animated:YES];
+                login = nil;
+            }
+            
+        }];
+        return NO;
+    }
+    else{
+        
+        UIAlertView * alert = [[UIAlertView alloc]initWithTitle:@"登入失败" message:@"用户名重复，请联系管理员" delegate:self cancelButtonTitle:LOCALIZATION(@"dialog_ok") otherButtonTitles:nil];
+        [alert show];
+        return NO;
+    }
+    return YES;
+}
+- (void)tableHeight
+{
+    CGFloat height = head_bg.frame.size.height + head_bg.frame.origin.y;
+        if ([frindsArray count]*70+100 < viewSize.height-height) {
+            _tableView.frame = CGRectMake(_tableView.frame.origin.x, _tableView.frame.origin.y, _tableView.frame.size.width, [frindsArray count]*70+105+20);
+        }
+        else{
+            _tableView.frame = CGRectMake(_tableView.frame.origin.x, _tableView.frame.origin.y, _tableView.frame.size.width, viewSize.height-height+5);
+        }
+
+}
+// 事件点击
+- (void)gestureClick:(UITapGestureRecognizer *)tapSender
+{
+    if (tapSender.view.tag == CONTACT_BTN_TAG){
+        SetUpViewController *setUp = [[SetUpViewController alloc]init];
+        [self.navigationController pushViewController:setUp animated:YES];
+        setUp = nil;
+    }
+    // 事项
+    else if (tapSender.view.tag == MATTER_BTN_TAG){
+//        MattersViewController *mvc = [[MattersViewController alloc] init];
+//        [self.navigationController pushViewController:mvc animated:YES];
+//        mvc = nil;
+    }
+    else if (tapSender.view.tag == MOMENTS_BTN_TAG){
+        FirendCircleHomeTableViewController *friendCircle = [[FirendCircleHomeTableViewController alloc]init];
+        [self.navigationController pushViewController:friendCircle animated:YES];
+        friendCircle = nil;
+    }
+    else if (tapSender.view.tag == COCHAT_BTN_TAG){
+        UserContactViewController *userContact = [[UserContactViewController alloc]init];
+        [self.navigationController pushViewController:userContact animated:NO];
+        userContact = nil;
+    }
+
+}
+- (void)btnClick:(UIButton *)sender
+{
+    if (sender.tag == SEARCH_BTN_TAG) {
+        SearchFriendsViewController *search = [[SearchFriendsViewController alloc]init];
+        CATransition *animation = [CATransition animation];
+        [animation setDuration:0.3];
+        [animation setType: kCATransitionMoveIn];
+        [animation setSubtype: kCATransitionFromTop];
+        [animation setTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionDefault]];
+        [self.navigationController pushViewController:search animated:NO];
+        [self.navigationController.view.layer addAnimation:animation forKey:nil];
+    }
+    else if (sender.tag == ADD_BTN_TAG){
+        
+    }
+    else if (sender.tag == SET_BTN_TAG){
+        SetUpViewController *setUp = [[SetUpViewController alloc]init];
+        [self.navigationController pushViewController:setUp animated:YES];
+        setUp = nil;
+    }
+    else if (sender.tag == CONTACT_BTN_TAG){
+        SetUpViewController *setUp = [[SetUpViewController alloc]init];
+        [self.navigationController pushViewController:setUp animated:YES];
+        setUp = nil;
+    }
+    // 事项
+    else if (sender.tag == MATTER_BTN_TAG){
+//        MattersViewController *mvc = [[MattersViewController alloc] init];
+//        [self.navigationController pushViewController:mvc animated:YES];
+//        mvc = nil;
+    }
+    else if (sender.tag == MOMENTS_BTN_TAG){
+        FirendCircleHomeTableViewController *friendCircle = [[FirendCircleHomeTableViewController alloc]init];
+        [self.navigationController pushViewController:friendCircle animated:YES];
+        friendCircle = nil;
+    }
+    else if (sender.tag == COCHAT_BTN_TAG){
+        UserContactViewController *userContact = [[UserContactViewController alloc]init];
+        [self.navigationController pushViewController:userContact animated:NO];
+        userContact = nil;
+    }
+    else if (sender.tag == DIALOG_Btn_TAG){
+        [popOver dismiss];
+        
+    }
+    else if (sender.tag == SUBMIT_BTN_TAG){
+        [popOver dismiss];
+        [self creatGroup];
+    }
+}
+- (void)creatGroup
+{
+    NSDictionary *parameters = @{@"userId":GET_USER_ID,@"sid":GET_S_ID,@"groupName":groupName.text,@"groupType":[NSString stringWithFormat:@"%d",0]};
+    [AFRequestService responseData:CREATE_GROUP andparameters:parameters andResponseData:^(id responseData){
+        NSDictionary *dict =(NSDictionary *)responseData;
+        NSUInteger codeNum = [[dict objectForKey:@"code"] integerValue];
+        if (codeNum == CODE_SUCCESS) {
+            NSDictionary *groupDict = (NSDictionary *)[dict objectForKey:@"group"];
+            //开个子线程将数据添加到数据库中
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                SqliteFieldAndTable *sqliteAndtable = [[SqliteFieldAndTable alloc]init];
+                [sqliteAndtable getReturnAddGroup:groupDict];
+                sqliteAndtable = nil;
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                      
+                    });
+                
+            });
+            //  跳转到群组成员添加页面
+            AddGroupMemberViewController *addGroupMember = [[AddGroupMemberViewController alloc]init];
+            addGroupMember.groupId = [groupDict objectForKey:@"groupId"];
+            addGroupMember.groupName = [groupDict objectForKey:@"groupName"];
+            addGroupMember.flag = 1;
+            [self.navigationController pushViewController:addGroupMember animated:YES];
+          }
+        else if (codeNum == CODE_ERROE){
+            SqliteFieldAndTable *sqliteAndtable = [[SqliteFieldAndTable alloc]init];
+            FriendListViewController __weak *_Self = self;
+            [sqliteAndtable repeatLogin:^(BOOL flag) {
+                if (flag) {
+                    [_Self creatGroup];
+                }
+                else{
+                    UserLoginViewController *login = [[UserLoginViewController alloc]init];
+                    [_Self.navigationController pushViewController:login animated:YES];
+                    login = nil;
+                }
+                
+            }];
+        }
+        
+        
+    }];
+}
+
+- (void)requestFriendNewCount
+{
+    NSDictionary *parameters = @{@"userId":GET_USER_ID,@"sid":GET_S_ID};
+    [AFRequestService responseData:@"friendnewcount.php" andparameters:parameters andResponseData:^(id responseData){
+        NSDictionary *dict =(NSDictionary *)responseData;
+        NSUInteger codeNum = [[dict objectForKey:@"code"] integerValue];
+        if (codeNum == CODE_SUCCESS) {
+            NSDictionary *groupDict = (NSDictionary *)[dict objectForKey:@"count"];
+            _friendNewCount = [NSString stringWithFormat:@"%@",groupDict];
+        }
+        else if (codeNum == CODE_ERROE){
+            SqliteFieldAndTable *sqliteAndtable = [[SqliteFieldAndTable alloc]init];
+             FriendListViewController __weak *_Self = self;
+            [sqliteAndtable repeatLogin:^(BOOL flag) {
+                if (flag) {
+                    [_Self requestFriendNewCount];
+                }
+                else{
+                    UserLoginViewController *login = [[UserLoginViewController alloc]init];
+                    [_Self.navigationController pushViewController:login animated:YES];
+                    login = nil;
+                }
+
+            }];
+           
+        }
+        else{
+            NSString *alertcontext = LOCALIZATION(@"tip_msg_neterror");
+            NSString *alertText = LOCALIZATION(@"dialog_prompt");
+            NSString *alertOk = LOCALIZATION(@"dialog_ok");
+            UIAlertView * alert = [[UIAlertView alloc]initWithTitle:alertText message:alertcontext delegate:self cancelButtonTitle:alertOk otherButtonTitles:nil];
+            [alert show];
+        }
+        
+        [_tableView reloadData];
+        //[self SetTablePosition];
+
+    }];
+
+}
+#pragma mark ====== TableViewDelegate
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    if (section == 0) {
+        return 2;
+    }
+    else{
+        return  [[self.sortedArrForArrays objectAtIndex:section-1] count];
+    }
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+    return [self.sortedArrForArrays count]+1;
+}
+
+- (NSArray *)sectionIndexTitlesForTableView:(UITableView *)tableView {
+    tableView.sectionIndexColor = GETColor(106, 106, 106);
+    if (IOS7_LATER) {
+        tableView.sectionIndexBackgroundColor = [UIColor clearColor];
+    }
+    return self.sectionHeadsKeys;
+}
+- (NSInteger)tableView:(UITableView *)tableView sectionForSectionIndexTitle:(NSString *)title atIndex:(NSInteger)index
+{
+    return index+1;
+    
+}
+
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section
+{
+    UIView *view = [[UIView alloc] initWithFrame:CGRectZero];
+    view.backgroundColor = GETColor(245, 245, 245);
+    UILabel *titleLabel=[[UILabel alloc] initWithFrame:CGRectMake(10, 2.5, 30, 15)];
+    titleLabel.textColor = GETColor(106, 106, 106);
+    titleLabel.backgroundColor = [UIColor clearColor];
+    titleLabel.font = [UIFont systemFontOfSize:14.0f];
+    titleLabel.text= [_sectionHeadsKeys objectAtIndex:section-1];
+
+    [view addSubview:titleLabel];
+    return view;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    static NSString *cellName = @"cell";
+    if (indexPath.section == 0 && indexPath.row == 0) {
+        FriendsTableViewCellOne *cell = [tableView dequeueReusableCellWithIdentifier:cellName];
+        if (cell == nil) {
+            cell = [[[NSBundle mainBundle]loadNibNamed:@"FriendsTableViewCellOne" owner:self options:nil]lastObject];
+        }
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        cell.imgView.image = [[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"newfri_ico@2x" ofType:@"png"]];
+        cell.nameLable.text = LOCALIZATION(@"friendlist_new");
+        if ([_friendNewCount isEqualToString:@"0"]) {
+            cell.numLable.hidden = YES;
+        }else{
+            cell.numLable.hidden = NO;
+        }
+        cell.numLable.layer.cornerRadius = 8;
+        if ([_friendNewCount integerValue] >= 100) {
+            cell.numLable.frame = CGRectMake(cell.numLable.frame.origin.x - 4, cell.numLable.frame.origin.y, cell.numLable.frame.size.width + 4, cell.numLable.frame.size.height);
+            cell.numLable.text = @"99+";
+        }
+        else{
+            cell.numLable.text = _friendNewCount;
+        }
+        return cell;
+    }else{
+        FriendsTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellName];
+        if (cell == nil) {
+            cell = [[[NSBundle mainBundle]loadNibNamed:@"FriendsTableViewCell" owner:self options:nil]lastObject];
+        }
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        if (indexPath.section == 0) {
+            
+            if (indexPath.row == 0) {
+                
+            }
+            else {
+                cell.imgView.image = [[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"group@2x" ofType:@"png"]];
+                
+                cell.nameLable.text = LOCALIZATION(@"friendlist_allgroup");
+            }
+        }
+        
+        else{
+            NSArray *arr = [self.sortedArrForArrays objectAtIndex:indexPath.section-1];
+            if ([arr count] > indexPath.row) {
+                ChineseString *str = (ChineseString *) [arr objectAtIndex:indexPath.row];
+                cell.nameLable.text = str.friendModel.dstUserName;
+                if([NSString stringWithFormat:@"%@",str.friendModel.icon].length>0){
+                   [cell.imgView sd_setImageWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"%@%@",IMAGE_BASE_URL,str.friendModel.icon]] placeholderImage:[UIImage imageNamed:@"portrait_ico@2x"]];
+                }
+                
+                
+            } else {
+                
+            }
+            
+            
+            
+        }
+        
+        return cell;
+
+    }
+}
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    
+    if (indexPath.section == 0) {
+        // 新同事
+        if (indexPath.row == 0) {
+            AddNewColleagueViewController *avc = [[AddNewColleagueViewController alloc] init];
+            [self.navigationController pushViewController:avc animated:YES];
+        }
+        // 群组
+        else if (indexPath.row == 1){
+            GroupListViewController *groupVC = [[GroupListViewController alloc]init];
+            [self.navigationController pushViewController:groupVC animated:YES];
+        }
+        else{
+            
+        }
+    }
+    else{
+    FriendDetailViewController *friendDetail = [[FriendDetailViewController alloc]init];
+    NSArray *arr = [self.sortedArrForArrays objectAtIndex:indexPath.section-1];
+    ChineseString *str = (ChineseString *) [arr objectAtIndex:indexPath.row];
+        FriendIfo *model = [[FriendIfo alloc]init];
+        model.dstUserId = @"";
+        
+    friendDetail.friendModel = str.friendModel;
+    [self.navigationController pushViewController:friendDetail animated:YES];    
+    }
+    
+}
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.section == 0 && indexPath.row == 0) {
+        return 60;
+    }else{
+        return 55;
+    }
+}
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
+{
+    if (section == 0) {
+        return 0;
+    }
+    else{
+    return 20;
+    }
+}
+// 按首字母对名字进行分组排序
+- (NSMutableArray *)getChineseStringArr:(NSMutableArray *)arrToSort {
+    NSMutableArray *chineseStringsArray = [NSMutableArray array];
+    for(int i = 0; i < [arrToSort count]; i++) {
+        FriendIfo *model = (FriendIfo *)arrToSort[i];
+        ChineseString *chineseString=[[ChineseString alloc]init];
+        chineseString.string=model.dstUserName;
+        chineseString.friendModel = model;
+        if(chineseString.string==nil){
+            chineseString.string=@"";
+        }
+        
+        if(![chineseString.string isEqualToString:@""]){
+            //join the pinYin
+            NSString *pinYinResult = [NSString string];
+            for(int j = 0;j < chineseString.string.length; j++) {
+                NSString *singlePinyinLetter = [[NSString stringWithFormat:@"%c",
+                                                 pinyinFirstLetter([chineseString.string characterAtIndex:j])]uppercaseString];
+                
+                pinYinResult = [pinYinResult stringByAppendingString:singlePinyinLetter];
+            }
+            chineseString.pinYin = pinYinResult;
+        } else {
+            chineseString.pinYin = @"";
+        }
+        [chineseStringsArray addObject:chineseString];
+        chineseString = nil;
+    }
+    
+    //sort the ChineseStringArr by pinYin
+    NSArray *sortDescriptors = [NSArray arrayWithObject:[NSSortDescriptor sortDescriptorWithKey:@"pinYin" ascending:YES]];
+    [chineseStringsArray sortUsingDescriptors:sortDescriptors];
+    
+    
+    NSMutableArray *arrayForArrays = [NSMutableArray array];
+    BOOL checkValueAtIndex= NO;  //flag to check
+    NSMutableArray *TempArrForGrouping = nil;
+    
+    for(int index = 0; index < [chineseStringsArray count]; index++)
+    {
+        ChineseString *chineseStr = (ChineseString *)[chineseStringsArray objectAtIndex:index];
+        NSMutableString *strchar= [NSMutableString stringWithString:chineseStr.pinYin];
+        NSString *sr= [strchar substringToIndex:1];
+        //sr containing here the first character of each string
+        if(![_sectionHeadsKeys containsObject:[sr uppercaseString]])//here I'm checking whether the character already in the selection header keys or not
+        {
+            [_sectionHeadsKeys addObject:[sr uppercaseString]];
+            TempArrForGrouping = [[NSMutableArray alloc] initWithObjects:nil];
+            checkValueAtIndex = NO;
+        }
+        if([_sectionHeadsKeys containsObject:[sr uppercaseString]])
+        {
+            [TempArrForGrouping addObject:[chineseStringsArray objectAtIndex:index]];
+            if(checkValueAtIndex == NO)
+            {
+                [arrayForArrays addObject:TempArrForGrouping];
+                checkValueAtIndex = YES;
+            }
+        }
+    }
+    return arrayForArrays;
+}
+
+//-(void)showPopover:(id)sender
+-(void)showPopover:(id)sender forEvent:(UIEvent*)event
+{
+    UITableViewController *tableViewController = [[UITableViewController alloc] initWithStyle:UITableViewStylePlain];
+    tableViewController.view.frame = CGRectMake(0,0, 320, 400);
+    TSPopoverController *popoverController = [[TSPopoverController alloc] initWithContentViewController:tableViewController];
+    
+    popoverController.cornerRadius = 0;
+    popoverController.titleText = @"change order";
+    popoverController.popoverBaseColor = [UIColor lightGrayColor];
+    popoverController.popoverGradient= NO;
+    [popoverController showPopoverWithTouch:event];
+    
+}
+
+-(void) showActionSheet:(id)sender forEvent:(UIEvent*)event
+{
+    TSActionSheet *actionSheet = [[TSActionSheet alloc] init];
+    
+    NSString *addFriend = LOCALIZATION(@"home_addfriend");
+    NSString *createGroup = LOCALIZATION(@"home_addgroup");
+    [actionSheet addButtonWithTitle:addFriend icon:@"add_icon.png" block:^{
+        SearchFriendsViewController *search = [[SearchFriendsViewController alloc]init];
+        CATransition *animation = [CATransition animation];
+        [animation setDuration:0.3];
+        [animation setType: kCATransitionMoveIn];
+        [animation setSubtype: kCATransitionFromTop];
+        [animation setTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionDefault]];
+        [self.navigationController pushViewController:search animated:NO];
+        [self.navigationController.view.layer addAnimation:animation forKey:nil];
+        
+    }];
+    [actionSheet addButtonWithTitle:createGroup icon:@"group_icon.png" block:^{
+        UIWindow *window = [UIApplication sharedApplication].keyWindow;
+        if(!window) {
+            window = [[UIApplication sharedApplication].windows objectAtIndex:0];
+        }
+
+        popOver = [[QiDiPopoverView alloc] init];
+        [popOver showPopoverAtPoint:CGPointMake(viewSize.width, 0) inView:self.view withContentView:[self creatGroupView]];
+        
+    }];
+    actionSheet.cornerRadius = 0;
+    
+    [actionSheet showWithTouch:event];
+}
+- (UIView *)creatGroupView{
+    UIView *contaiterView = [[UIView alloc]initWithFrame:CGRectMake(30, 64, viewSize.width-60, 170)];
+    contaiterView.backgroundColor = [UIColor blackColor];
+    
+    UILabel *groupNameLabel = [[UILabel alloc]initWithFrame:CGRectMake(5, 5, 150, 40)];
+    groupNameLabel.text = LOCALIZATION(@"chat_groupname");
+    groupNameLabel.textColor = [UIColor whiteColor];
+    groupNameLabel.backgroundColor = [UIColor clearColor];
+    groupNameLabel.font = [UIFont systemFontOfSize:16];
+    [contaiterView addSubview:groupNameLabel];
+    
+    UIImageView *lineBg1 = [[UIImageView alloc]initWithFrame:CGRectMake(0, 45, contaiterView.frame.size.width, 2)];
+    lineBg1.image = [[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"searchbglinered@2x" ofType:@"png"]];
+    
+    [contaiterView addSubview:lineBg1];
+    
+    groupName = [[UITextField alloc]initWithFrame:CGRectMake(5, 60, contaiterView.frame.size.width-10, 30)];
+    [groupName setBorderStyle:UITextBorderStyleLine];
+    groupName.layer.borderColor = [[UIColor orangeColor]CGColor];
+    groupName.font = [UIFont systemFontOfSize:16];
+    groupName.textColor = [UIColor whiteColor];
+    groupName.autocapitalizationType = UITextAutocapitalizationTypeNone;
+    groupName.keyboardAppearance = UIKeyboardAppearanceDefault;
+    groupName.keyboardType = UIKeyboardTypeDefault;
+    groupName.returnKeyType = UIReturnKeyGo;
+    [groupName becomeFirstResponder];
+    groupName.tag = 101;
+    groupName.delegate = self;
+    [contaiterView addSubview:groupName];
+    
+    UIImageView *lineBg2 = [[UIImageView alloc]initWithFrame:CGRectMake(6, 90, contaiterView.frame.size.width-10, 4)];
+    lineBg2.image = [[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"searchbglinered@2x" ofType:@"png"]];
+    
+    [contaiterView addSubview:lineBg2];
+    
+    UIButton *dialogBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    dialogBtn.frame = CGRectMake(30, 120, 70, 40);
+    dialogBtn.backgroundColor = [UIColor clearColor];
+    dialogBtn.tag = DIALOG_Btn_TAG;
+    [dialogBtn setTitle:LOCALIZATION(@"dialog_cancel") forState:UIControlStateNormal];
+    [dialogBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    [dialogBtn addTarget:self action:@selector(btnClick:) forControlEvents:UIControlEventTouchUpInside];
+    dialogBtn.titleLabel.textAlignment = NSTextAlignmentCenter;
+    dialogBtn.titleLabel.font = [UIFont systemFontOfSize:16];
+    
+    UIButton *subMitBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    subMitBtn.frame = CGRectMake(150, 120, 70, 40);
+    subMitBtn.backgroundColor = [UIColor clearColor];
+    subMitBtn.tag = SUBMIT_BTN_TAG;
+    [subMitBtn setTitle:LOCALIZATION(@"button_submit") forState:UIControlStateNormal];
+    [subMitBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    [subMitBtn addTarget:self action:@selector(btnClick:) forControlEvents:UIControlEventTouchUpInside];
+    subMitBtn.titleLabel.textAlignment = NSTextAlignmentCenter;
+    subMitBtn.titleLabel.font = [UIFont systemFontOfSize:16];
+    [contaiterView addSubview:dialogBtn];
+    [contaiterView addSubview:subMitBtn];
+    
+    return contaiterView;
+}
+-(void)creatHUD:(NSString *)hud{
+    if (!HUD) {
+        HUD = [[MBProgressHUD alloc] initWithView:self.view] ;
+        [self.view addSubview:HUD];
+        HUD.delegate = self;
+    }
+    HUD.labelText = hud;
+}
+#pragma mark MBProgressHUDDelegate methods
+- (void)hudWasHidden:(MBProgressHUD *)hud {
+    // Remove HUD from screen when the HUD was hidded
+    if (HUD && HUD.superview) {
+        [HUD removeFromSuperview];
+        HUD = nil;
+    }
+}
+
+- (void)setExtraCellLineHidden: (UITableView *)tableView
+{
+    UIView *view =[ [UIView alloc]init];
+    view.backgroundColor = [UIColor clearColor];
+    [tableView setTableFooterView:view];
+    [tableView setTableHeaderView:view];
+}
+
+- (void)didReceiveMemoryWarning
+{
+    [super didReceiveMemoryWarning];
+    if(self.isViewLoaded && !self.view.window){
+        HUD = nil;
+        popOver = nil;
+        head_bg =  nil;
+        _tableView = nil;
+        frindsArray = nil;
+        userArray = nil;
+        groupName = nil;
+        _friendNewCount = nil;
+        self.view = nil;
+    }
+}
+
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+{
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+@end

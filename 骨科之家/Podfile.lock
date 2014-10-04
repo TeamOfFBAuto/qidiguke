@@ -1,0 +1,16 @@
+PODS:
+  - ELCImagePickerController (0.2.0)
+  - JSONKit (1.5pre)
+  - Reachability (3.1.1)
+
+DEPENDENCIES:
+  - ELCImagePickerController (~> 0.2.0)
+  - JSONKit (~> 1.5pre)
+  - Reachability (~> 3.1.1)
+
+SPEC CHECKSUMS:
+  ELCImagePickerController: 4dc83bb6ce995f4964b0080d77ad5a01141e6db2
+  JSONKit: efef3bbd3372ff33f96b9c6f34cf4fe18e74ab69
+  Reachability: 8e9635e3cb4f98e7f825e51147f677ecc694d0e7
+
+COCOAPODS: 0.33.1

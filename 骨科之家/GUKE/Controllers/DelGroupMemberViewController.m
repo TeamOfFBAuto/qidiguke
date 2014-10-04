@@ -1,0 +1,381 @@
+//
+//  DelGroupMemberViewController.m
+//  UNITOA
+//
+//  Created by qidi on 14-7-11.
+//  Copyright (c) 2014年 qidi. All rights reserved.
+//
+
+#import "DelGroupMemberViewController.h"
+#import "UIImageView+WebCache.h"
+#import "GroupMember.h"
+#import "SqliteFieldAndTable.h"
+#import "UserLoginViewController.h"
+#import "Interface.h"
+#define SEARCH_RIGHT_BTN_TAG 4000
+@interface DelGroupMemberViewController ()
+{
+    MBProgressHUD *HUD;
+    UITableView *_tableView;
+    NSMutableArray * userArray;
+    NSMutableString *userIds;
+    CheckBox *checkBox;
+    BOOL isChecked;
+    NSMutableArray *nameArray;
+}
+@end
+
+@implementation DelGroupMemberViewController
+
+- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        // Custom initialization
+    }
+    return self;
+}
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor whiteColor];
+    if (IOS7_LATER) {
+        self.edgesForExtendedLayout = UIRectEdgeNone;
+    }
+    // 初始化数组和字符串对象
+    userArray = [[NSMutableArray alloc]init];
+    nameArray = [[NSMutableArray alloc]init];
+    userIds = [[NSMutableString alloc]init];
+    [self navigation];
+    [self dataRequest];
+    [self creatTable];
+    
+    
+}
+- (void)navigation
+{
+    UIView *bgNavi = [[UIView alloc]initWithFrame:CGRectMake(0, 0, 190, 44)];
+    bgNavi.backgroundColor = [UIColor clearColor];
+    bgNavi.userInteractionEnabled = YES;
+    
+    UIImageView *logoView = [[UIImageView alloc]initWithImage:[[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"guke_top_logo_arrow@2x" ofType:@"png"]]];
+    
+    logoView.backgroundColor = [UIColor clearColor];
+    logoView.frame = CGRectMake(0, 0, 44, 44);
+    logoView.contentMode = UIViewContentModeScaleAspectFit;
+    logoView.userInteractionEnabled = YES;
+    
+    UILabel *loginLabel = [[UILabel alloc]initWithFrame:CGRectMake(52, 7, 160, 30)];
+    loginLabel.text = self.groupName;
+    loginLabel.textColor = [UIColor whiteColor];
+    loginLabel.backgroundColor = [UIColor clearColor];
+    loginLabel.font = [UIFont systemFontOfSize:16];
+    [bgNavi addSubview:logoView];
+    [bgNavi addSubview:loginLabel];
+    
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(tapAction)];
+    tap.numberOfTapsRequired = 1;
+    tap.numberOfTouchesRequired = 1;
+    [bgNavi addGestureRecognizer:tap];
+    tap = nil;
+    
+    UIBarButtonItem *leftItem = [[UIBarButtonItem alloc]initWithCustomView:bgNavi];
+    self.navigationItem.leftBarButtonItem = leftItem;
+    
+    UIView *rightView = [[UIView alloc]initWithFrame:CGRectMake(0, 0, 90, 40)];
+    rightView.backgroundColor = [UIColor clearColor];
+    
+    UIButton * subMitBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    subMitBtn.frame = CGRectMake(0, 5, 50, 30);
+    subMitBtn.tag = SUBMIT_BTN_TAG;
+    [subMitBtn setBackgroundImage:[[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"button_add@2x" ofType:@"png"]] forState:UIControlStateNormal];
+    
+    [subMitBtn setTitle:LOCALIZATION(@"dialog_ok") forState:UIControlStateNormal];
+    [subMitBtn setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+    subMitBtn.titleLabel.font = [UIFont boldSystemFontOfSize:15];
+    [subMitBtn addTarget:self action:@selector(btnClick:) forControlEvents:UIControlEventTouchUpInside];
+    UIBarButtonItem* rightitem = [[UIBarButtonItem alloc]initWithCustomView:subMitBtn];
+    self.navigationItem.rightBarButtonItem = rightitem;
+    
+}
+- (void)tapAction
+{
+    [self.navigationController popViewControllerAnimated:YES];
+}
+- (void)btnClick:(UIButton *)sender
+{
+    if (sender.tag == SEARCH_RIGHT_BTN_TAG) {
+        
+    }
+   else if(sender.tag == SUBMIT_BTN_TAG){
+       [self delMemeber];
+    }
+}
+- (void)delMemeber{
+    if ([nameArray count] == 0) {
+        [self.navigationController popViewControllerAnimated:YES];
+        
+    }
+    else{
+        for (NSString *userName in nameArray) {
+            if (userName == nil || userName <= 0 ) {
+                [userIds appendFormat:@"%@",userName];
+                
+            }
+            else{
+                [userIds appendFormat:@",%@",userName];
+            }
+            
+        }
+        NSDictionary *parameters = @{@"userId": GET_USER_ID,@"sid":GET_S_ID,@"groupId": self.groupId,@"delUserId":userIds};
+        [AFRequestService responseData:DEL_GROUP_MEMBER andparameters:parameters andResponseData:^(id responseData) {
+            NSDictionary *dict = (NSDictionary *)responseData;
+            NSUInteger codeNum = [[dict objectForKey:@"code"] integerValue];
+            if (codeNum == CODE_SUCCESS) {
+                //删除本地群组中的用户数据
+                NSArray *userIdArray = [userIds componentsSeparatedByString:@","];
+                for (NSString *userId in userIdArray) {
+                    [GroupMember delGroupMemberInfo:self.groupId andUserId:userId];
+                }
+                
+                [self.navigationController popViewControllerAnimated:YES];
+            }
+            else if (codeNum == CODE_ERROE){
+                SqliteFieldAndTable *sqliteAndtable = [[SqliteFieldAndTable alloc]init];
+                DelGroupMemberViewController __weak *_Self = self;
+                [sqliteAndtable repeatLogin:^(BOOL flag) {
+                    if (flag) {
+                        [_Self delMemeber];
+                    }
+                    else{
+                        UserLoginViewController *login = [[UserLoginViewController alloc]init];
+                        [_Self.navigationController pushViewController:login animated:YES];
+                        login = nil;
+                    }
+                    
+                }];
+            }
+            else{
+                return;
+            }
+            
+            
+        }];
+    }
+}
+- (void)creatTable
+{
+    if (IOS7_LATER) {
+        _tableView = [[UITableView alloc]initWithFrame:CGRectMake(0,0,viewSize.width, viewSize.height - 64) style:UITableViewStylePlain];
+        
+    }
+    else{
+        _tableView = [[UITableView alloc]initWithFrame:CGRectMake(0,0,viewSize.width, viewSize.height - 44) style:UITableViewStylePlain];
+        
+    }
+    _tableView.delegate = self;
+    _tableView.dataSource = self;
+    // 解决IOS7下tableview分割线左边短了一点
+    if ([_tableView respondsToSelector:@selector(setSeparatorInset:)]) {
+        
+        [_tableView setSeparatorInset:UIEdgeInsetsZero];
+        
+    }
+    
+    [self setExtraCellLineHidden:_tableView];
+
+    [self.view addSubview:_tableView];
+}
+// 数据请求
+- (void)dataRequest
+{
+    [self creatHUD:LOCALIZATION(@"chat_loading")];
+    [HUD show:YES];
+    NSDictionary *parameters = @{@"userId":GET_USER_ID,@"sid": GET_S_ID,@"groupId": self.groupId,@"page": [NSString stringWithFormat:@"%d",1],@"pageSize":[NSString stringWithFormat:@"%d",INT32_MAX]};
+    [AFRequestService responseData:GROUP_MEMBER_LIST andparameters:parameters andResponseData:^(id responseData) {
+        NSDictionary *dict = (NSDictionary *)responseData;
+        if ([self saveData:dict]) {
+            [_tableView reloadData];
+            [HUD hide:YES];
+        }
+        else{
+            return;
+        }
+        
+    }];
+}
+
+- (BOOL)saveData:(NSDictionary *)dict
+{
+    [userArray removeAllObjects];
+    NSInteger codeNum = [[dict objectForKey:@"code"] intValue];
+    if (codeNum == 0) {
+        NSArray *memberlists = [dict objectForKey:@"memberlist"];
+        for (int i = 0; i<[memberlists count]; ++i) {
+            NSDictionary *memberlist = memberlists[i];
+            NSString *userId = [memberlist valueForKeyPath:@"userId"];
+            NSString *username = [memberlist valueForKeyPath:@"username"];
+            
+            NSDictionary *parameters = @{@"userId": GET_USER_ID,@"sid": GET_S_ID,@"keyword": @"",@"page": [NSString stringWithFormat:@"%d",1],@"pageSize":[NSString stringWithFormat:@"%d",INT32_MAX]};
+            [AFRequestService responseData:USER_SEARCH_URL andparameters:parameters andResponseData:^(id responseData) {
+                NSDictionary *dict = (NSDictionary *)responseData;
+                NSUInteger codeNum1 = [[dict objectForKey:@"code"] integerValue];
+                if (codeNum1 == CODE_SUCCESS) {
+                    NSArray *userLists = [dict objectForKey:@"userlist"];
+                    for (int i = 0; i<[userLists count]; ++i) {
+                        NSDictionary *userList = userLists[i];
+                        if ([userId isEqualToString:[userList valueForKeyPath:@"userId"]] && [username isEqualToString:[userList valueForKeyPath:@"username"]]) {
+                            UserIfo *model = [[UserIfo alloc]init];
+                            model.firstname = [userList valueForKeyPath:@"firstname"];
+                            model.username = [userList valueForKeyPath:@"username"];
+                            model.userId = [userList valueForKeyPath:@"userId"];
+                            model.icon = [userList valueForKeyPath:@"icon"];
+                            [userArray addObject:model];
+                            model = nil;
+                        }
+                        
+                    }
+                    [_tableView reloadData];
+                }
+                else if (codeNum == CODE_ERROE){
+                    SqliteFieldAndTable *sqliteAndtable = [[SqliteFieldAndTable alloc]init];
+                    DelGroupMemberViewController __weak *_Self = self;
+                    [sqliteAndtable repeatLogin:^(BOOL flag) {
+                        if (flag) {
+                            [_Self dataRequest];
+                        }
+                        else{
+                            UserLoginViewController *login = [[UserLoginViewController alloc]init];
+                            [_Self.navigationController pushViewController:login animated:YES];
+                            login = nil;
+                        }
+                        
+                    }];
+                }
+            }];
+        }
+        return YES;
+    }
+    else {
+        NSString *alertcontext = LOCALIZATION(@"login_error_pwd");
+        NSString *alertText = LOCALIZATION(@"dialog_prompt");
+        NSString *alertOk = LOCALIZATION(@"dialog_ok");
+        UIAlertView * alert = [[UIAlertView alloc]initWithTitle:alertText message:alertcontext delegate:self cancelButtonTitle:alertOk otherButtonTitles:nil];
+        [alert show];
+        return NO;
+    }
+}
+
+#pragma mark ====== UITableViewDelegate
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
+{
+    return 1;
+}
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    return [userArray count];
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    NSString *cellName = [NSString stringWithFormat:@"cell%d",indexPath.row];
+    AddGroupMemberTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellName];
+    if (cell == nil) {
+        cell = [[AddGroupMemberTableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellName];
+    }
+    UserIfo *model = (UserIfo *)userArray[indexPath.row];
+    cell.checkTitle.tag = 401+indexPath.row;
+    cell.checkTitle.titleLabel.text = model.userId;
+    
+    [cell.imgView sd_setImageWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"%@%@",IMAGE_BASE_URL,model.icon]] placeholderImage:[[UIImage alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"portrait_ico@2x" ofType:@"png"]]];
+    
+    cell.nameLabel.text = model.firstname;
+    return cell;
+}
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    UITableViewCell *tableCell = [tableView cellForRowAtIndexPath:indexPath];
+    UIButton *titleBtn = (UIButton *)[tableCell viewWithTag:401+indexPath.row];
+    
+    BOOL isSelected = (tableCell.accessoryType == UITableViewCellAccessoryCheckmark);
+    
+    if (isSelected) {
+        tableCell.accessoryType = UITableViewCellAccessoryNone;
+        isChecked = NO;
+    }
+    else {
+        tableCell.accessoryType = UITableViewCellAccessoryCheckmark;
+        isChecked = YES;
+    }
+    
+    if (isChecked) {
+        [nameArray addObject:titleBtn.titleLabel.text];
+    }
+    else{
+        [nameArray removeObject:titleBtn.titleLabel.text];
+    }
+}
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    return 50;
+}
+// 小菊花提示框
+-(void)creatHUD:(NSString *)hud{
+    if (!HUD) {
+        HUD = [[MBProgressHUD alloc] initWithView:self.view] ;
+        [self.view addSubview:HUD];
+        HUD.delegate = self;
+    }
+    HUD.labelText = hud;
+}
+#pragma mark MBProgressHUDDelegate methods
+- (void)hudWasHidden:(MBProgressHUD *)hud {
+    // Remove HUD from screen when the HUD was hidded
+    if (HUD && HUD.superview) {
+        [HUD removeFromSuperview];
+        HUD = nil;
+    }
+}
+
+- (void)setExtraCellLineHidden: (UITableView *)tableView
+{
+    UIView *view =[ [UIView alloc]init];
+    view.backgroundColor = [UIColor clearColor];
+    [tableView setTableFooterView:view];
+    [tableView setTableHeaderView:view];
+}
+
+- (void)didReceiveMemoryWarning
+{
+    [super didReceiveMemoryWarning];
+    if(self.isViewLoaded && !self.view.window){
+        HUD = nil;
+        _tableView = nil;
+        userArray = nil;
+        userIds = nil;
+        self.view = nil;
+    }
+
+    // Dispose of any resources that can be recreated.
+}
+
+-(void)dealloc{
+    HUD = nil;
+    _tableView = nil;
+    userArray = nil;
+    userIds = nil;
+}
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+{
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+@end

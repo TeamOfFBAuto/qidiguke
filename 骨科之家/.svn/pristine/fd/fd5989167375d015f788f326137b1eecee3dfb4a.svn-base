@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bucket
+   type = "1"
+   version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.ExceptionBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            scope = "0"
+            stopOnStyle = "0">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "GUKE/OpenSource/AFNetworking/Networking Extensions/AFRequestService.m"
+            timestampString = "433395339.750412"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "293"
+            endingLineNumber = "293"
+            landmarkName = "+responseDataWithImage:andparameters:andDataArray:andfieldType:andfileName:andResponseData:"
+            landmarkType = "5">
+            <Locations>
+               <Location
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "+[AFRequestService responseDataWithImage:andparameters:andDataArray:andfieldType:andfileName:andResponseData:]"
+                  moduleName = "GUKE"
+                  urlString = "file:///Users/ianMac/Desktop/UNIS365/%E9%AA%A8%E7%A7%91%E4%B9%8B%E5%AE%B6/GUKE/OpenSource/AFNetworking/Networking%20Extensions/AFRequestService.m"
+                  timestampString = "433395339.803257"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "293"
+                  endingLineNumber = "293"
+                  offsetFromSymbolStart = "594">
+               </Location>
+               <Location
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "__110+[AFRequestService responseDataWithImage:andparameters:andDataArray:andfieldType:andfileName:andResponseData:]_block_invoke"
+                  moduleName = "GUKE"
+                  urlString = "file:///Users/ianMac/Desktop/UNIS365/%E9%AA%A8%E7%A7%91%E4%B9%8B%E5%AE%B6/GUKE/OpenSource/AFNetworking/Networking%20Extensions/AFRequestService.m"
+                  timestampString = "433395339.803607"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "293"
+                  endingLineNumber = "293"
+                  offsetFromSymbolStart = "34">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
+</Bucket>

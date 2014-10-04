@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>SchemeUserState</key>
+	<dict>
+		<key>Pods-ELCImagePickerController.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>3</integer>
+		</dict>
+		<key>Pods-JSONKit.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
+		<key>Pods.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>321E1021F9A041E2AA61273A</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>5518D809F94E43EE9CB7DE63</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>583F555FE0B74E6286E81318</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>B5CC1BC02B044B55ACC60319</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>FB0DC877D4E644C1B00E184A</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+	</dict>
+</dict>
+</plist>

@@ -1,0 +1,2 @@
+PODS_ALIPAYSDK_LIBRARY_SEARCH_PATHS = $(PODS_ROOT)/AliPaySDK/
+PODS_ALIPAYSDK_OTHER_LDFLAGS = -framework CFNetwork -framework CoreGraphics -framework Foundation -framework SystemConfiguration -framework UIKit

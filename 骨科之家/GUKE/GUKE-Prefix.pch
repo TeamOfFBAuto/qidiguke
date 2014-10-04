@@ -1,0 +1,45 @@
+//
+//  Prefix header
+//
+//  The contents of this file are implicitly included at the beginning of every source file.
+//
+
+#import <Availability.h>
+
+#ifndef __IPHONE_6_0
+#warning "This project uses features only available in iOS SDK 6.0 and later."
+#endif
+
+#ifdef __OBJC__
+    #import <UIKit/UIKit.h>
+    #import <Foundation/Foundation.h>
+    #import <MediaPlayer/MediaPlayer.h>
+    #import <QuartzCore/QuartzCore.h>
+    #import "APIInfo.h"
+    #import "PerferencesInfo.h"
+    #import "ConfigRefC.h"
+    #import "NSString+_859ToUTF8.h"
+    #import "HttpRequsetFactory.h"
+
+#import "JSONKit.h"
+
+
+    #import "Interface.h"
+
+
+#import "ITTDebug.h"
+#endif
+//判断系统版本
+//#define  currentDev [[UIDevice currentDevice].systemVersion floatValue] > 7.0
+//#define  currentDev1 [[UIDevice currentDevice].systemVersion floatValue] == 7.0
+#define  IOS7_LATER  [[UIDevice currentDevice].systemVersion floatValue] >=7.0
+#define  ISIOS_PREV [[UIDevice currentDevice].systemVersion floatValue] < 7.0
+#define  viewSize  self.view.frame.size
+// 应用在商店中的Apple ID
+#define AppleId 916459637
+
+//程序内文字
+#define LOCALIZATION(text) [[[NSUserDefaults standardUserDefaults] objectForKey:@"language"] valueForKey:text]
+
+// 颜色宏
+#define GETColor(r,g,b) [UIColor colorWithRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:1]

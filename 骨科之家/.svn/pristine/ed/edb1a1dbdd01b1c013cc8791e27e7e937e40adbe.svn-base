@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>527CA203-F1D7-4971-9842-A6D5B8D0A7C8</string>
+	<key>IDESourceControlProjectName</key>
+	<string>GUKE</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>AAEA0E13-FB6E-4CB3-BC38-C6179F494C87</key>
+		<string>https://www.hugbear.net:8443/svn/website/new/122.net/%252525E7%252525B4%252525AB%252525E5%25252585%25252589oa/code/ios/UNIT365</string>
+		<key>d43af370-9ee8-f94c-a908-a92522c62caf++6719</key>
+		<string>https://www.hugbear.net:8443/svn/website/new/122.net/%252525E9%252525AA%252525A8%252525E7%252525A7%25252591/code/ios/%252525E9%252525AA%252525A8%252525E7%252525A7%25252591%252525E4%252525B9%2525258B%252525E5%252525AE%252525B6</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>GUKE.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>AAEA0E13-FB6E-4CB3-BC38-C6179F494C87</key>
+		<string>../../../骨科</string>
+		<key>d43af370-9ee8-f94c-a908-a92522c62caf++6719</key>
+		<string>../..</string>
+	</dict>
+	<key>IDESourceControlProjectRepositoryRootDictionary</key>
+	<dict>
+		<key>AAEA0E13-FB6E-4CB3-BC38-C6179F494C87</key>
+		<string>https://www.hugbear.net:8443/svn/website</string>
+		<key>d43af370-9ee8-f94c-a908-a92522c62caf++6719</key>
+		<string>https://www.hugbear.net:8443/svn/website</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://www.hugbear.net:8443/svn/website/new/122.net/%252525E9%252525AA%252525A8%252525E7%252525A7%25252591/code/ios/%252525E9%252525AA%252525A8%252525E7%252525A7%25252591%252525E4%252525B9%2525258B%252525E5%252525AE%252525B6/GUKE.xcodeproj</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>d43af370-9ee8-f94c-a908-a92522c62caf++6719</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.subversion</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>d43af370-9ee8-f94c-a908-a92522c62caf++6719</string>
+			<key>IDESourceControlWCCName</key>
+			<string>%E9%AA%A8%E7%A7%91%E4%B9%8B%E5%AE%B6</string>
+		</dict>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.subversion</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>AAEA0E13-FB6E-4CB3-BC38-C6179F494C87</string>
+			<key>IDESourceControlWCCName</key>
+			<string>骨科</string>
+		</dict>
+	</array>
+</dict>
+</plist>
